@@ -1,0 +1,137 @@
+ // master i2c protocol for arduino ide
+
+class i2c_bus
+{
+  private:
+     char sda;
+     char sclk;
+      bool pulup; // for enabling internal pull ups
+  public:
+     i2c_bus(char, char,char,bool);
+     ~i2c_bus() { }
+    void start();
+    void stop ();
+    void write(uint8_t);
+    uint8_t read();
+};
+
+
+
+
+i2c_bus::i2c_bus(char sda,char sclk, bool pulup=0 ):
+sda(sda),
+sclk(sclk),
+pulup(pulup)
+{
+ #ifdef DEBUG
+  Serial.println("i2c pins have being initialized!!!");
+ #endif
+  
+ pinMode(sda,INPUT);
+ pinMode(sclk,INPUT);
+if(pulup)
+{
+ digitalWrite(sda,HIGH);
+ digitalWrite(sclk,HIGH);
+  #ifdef DEBUG
+  Serial.println("internal pull ups activated!!");
+  #endif
+}
+   
+}
+
+void i2c_bus::start()
+
+{
+    delayMicroseconds(4.7);
+   pinMode(sclk,OUTPUT);
+      if(pulup || digitalRead(sclk)==HIGH) 
+          digitalWrite(sclk,!digitalRead(sclk));// clockline is low
+   pinMode(sda,HIGH);
+       if(pulup || digitalRead(sda)==LOW)
+          digitalWrite(sda,!digitalRead(sda));//immediately make data line high
+    delayMicroseconds(4.7);//clockline low time or repeated start setup time
+  pinMode(sclk,INPUT);
+         if(pulup || digitalRead(sclk)==LOW)
+           digitalWrite(sclk,!digitalRead(sclk));//clockline has become high
+  delayMicroseconds(4.7);
+   pinMode(sda,OUTPUT);
+     if(pulup || digitalRead(sda)==HIGH)
+        digitalWrite(sda,!digitalRead(sda));// a start condition is initialized cos data line has become low  
+   delayMicroseconds(4);// hold time for start or repeated start condition
+   pinMode(sclk,OUTPUT);
+   if(pulup || digitalRead(sda)==HIGH)
+        digitalWrite(sclk,LOW);//clockline is now low
+#ifdef DEBUG
+ Serial.println("start/repeated start condition has occurred!!");
+#endif   
+}
+
+
+
+void i2c_bus::stop()
+{
+  pinMode(sclk,OUTPUT);
+  if(pulup || digitalRead(sclk)==HIGH) 
+     digitalWrite(sclk,!digitalRead(sclk));//making sure clockline is low
+  delayMicroseconds(2.7);//approx first half of clock low period 
+  pinMode(sda,OUTPUT);
+  if(pulup || digitalRead(sda)==HIGH)
+     digitalWrite(sda,!digitalRead(sda));//making sure dataline goes low 
+  delayMicroseconds(2);approx second half of clock low period
+  pinMode(sclk,INPUT);
+  if(pulup || digitalRead(sclk)==LOW)
+     digitalWrite(sclk,!digitalRead(sclk));//clockline has become high
+  delayMicroseconds(4.7);//setup time for stop condition
+  pinMode(sda,INPUT);
+  if(pulup || digitalRead(sda)==LOW)
+  digitalWrite(sda,!digitalRead(sda));
+  #ifdef DEBUG
+   Serial.println("stop condition has occurred!!");
+  #endif
+
+}
+ 
+
+
+
+void i2c_bus :: write(uint8_t data)
+{
+   uint8_t i ;
+   for(i=0;i<7;i++) 
+      {
+        pinMode(sda,OUTPUT);
+        if(pulup || digitalRead(sda)==HIGH)
+           digitalWrite(sda,!digitalRead(sda));
+       delayMicroseconds(2.7);
+        if(data & 0x80)
+          {
+           pinMode(sda,INPUT);
+            if(pulup || digitalRead(sda)== LOW)
+               digitalWrite(sda,HIGH);
+            data = data<<1;  
+           }else{data=data<<1;}
+        delayMicroseconds(2);
+        pinMode(sclk,HIGH);
+        (pulup || digitalRead(sclk)==LOW)?digitalWrite(sclk,!digitalRead(sclk)):digitalWrite(sclk,digitalRead(sclk)) ;
+        delayMicroseconds(4);
+        pinMode(sclk,OUTPUT);
+        if(pulup || digitalRead(sclk)==HIGH) 
+            digitalWrite(sclk,!digitalRead(sclk)); 
+       } 
+   if(digitalRead(sda)==LOW) {pinMode(sda,INPUT);digitalWrite(sda,HIGH);}else { pinMode(sda,INPUT); digitalWrite(sda,HIGH);} 
+    delayMicroseconds(2.7);
+      while(digitalRead(sda) == HIGH)
+            ;
+     delayMicroseconds(2);
+     pinMode(sclk,INPUT);
+     if(pulup || digitalRead(sclk)==LOW)digitalWrite(sclk,!digitalRead(sclk));
+   delayMicroseconds(4);
+   pinMode(sclk,OUTPUT);
+    if(pulup || digitalRead(sclk)==HIGH) digitalWrite(sclk,!digitalRead(sclk));
+        
+}
+
+uint8_t i2c_bus::read()
+{// awaiting update
+}
